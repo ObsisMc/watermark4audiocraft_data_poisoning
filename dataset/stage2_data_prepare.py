@@ -36,18 +36,24 @@ def generate(model_name, params, prompts, batch_size=100, save_path=None):
     
 
 if __name__ == "__main__":
-    # model_name = "small"
-    model_name = "checkpoints/my_audio_lm_7e9abb74"
+    model_names_original_wavmark = [("small", "neg"), ("checkpoints/my_audio_lm_7e9abb74", "pos")]
+    model_names_noneft_audiosealft = [("checkpoints/my_audio_lm_nowatermark_ft_fa62335b", "neg"), ("checkpoints/my_audio_lm_audioseal_ft_e85408a6", "pos")]
     
     params = dict(
         use_sampling=True,
         top_k=250,
         duration=10)
     
-    prompts = [
-        'This music is instrumental. The tempo is medium with a melodic steel pan harmony. The audio quality however is inferior and amateur,so the music is muddled. There are ambient sounds of breeze and people talking , indicating that this is a live performance.'
-    ] * 500
+    train_n = 1000
+    test_n = 250
     
-    audios, sr = generate(model_name, params, prompts, batch_size=50, save_path="generated_audios/pos")
+    
+    for m, folder in model_names_noneft_audiosealft:
+        prompts = [
+            # "This song is played with a harp. It sounds mystic and calming. This song may be playing in a melancholic video game-scene.",
+            "Electronic sounds accompany the glockenspiel with a style that combines bass notes on beats one and three and chords on beats two and four. The whole atmosphere is playful."
+        ] * test_n
+        with torch.no_grad():
+            audios, sr = generate(m, params, prompts, batch_size=50, save_path=f"generated_audios_noneft_audiosealft/test_ood_prompts/{folder}")
     
     
