@@ -3,6 +3,9 @@ import soundfile
 import torch
 import wavmark
 
+import audioseal
+from audioseal import AudioSeal
+
 import os
 import shutil
 import pandas as pd
@@ -18,8 +21,12 @@ import tqdm
 
 
 watermark_model = None
+watermark_name = None
+device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 np.random.seed(42)
 payload = np.random.choice([0, 1], size=16) # [0 1 0 0 0 1 0 0 0 1 0 0 0 0 1 0]
+print("Payload:", payload)
+
 
 def test_watermark():
     # 1.load model
@@ -75,15 +82,34 @@ def null_watermark():
     print(f"Other info: {_}") 
 
 
-def init_watermark():
-    global watermark_model
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    watermark_model = wavmark.load_model().to(device)
+def init_watermark(name="audioseal"):
+    global watermark_model, watermark_name, device
+    
+    if name == "audioseal":
+        watermark_model = AudioSeal.load_generator("audioseal_wm_16bits")
+        watermark_model.to(device)
+    else:
+        watermark_model = wavmark.load_model().to(device)
+        
+    watermark_name = name
 
 
-def watermark_audio(audio):
-    global watermark_model, payload
-    wm_audio, _ = wavmark.encode_watermark(watermark_model, audio, payload, show_progress=False)
+def watermark_audio(audio, sr=None):
+    global watermark_model, payload, device
+    
+    if watermark_name == "audioseal":
+        if len(audio.shape) == 1:
+            audio = audio[None, None, :]
+        audio = torch.tensor(audio).to(device).float()
+        watermark = watermark_model.get_watermark(audio, sr, message=torch.tensor(payload)[None, :].to(audio))
+        wm_audio = audio + watermark
+    else:
+        wm_audio, _ = wavmark.encode_watermark(watermark_model, audio, payload, show_progress=False)
+    
+    if isinstance(wm_audio, torch.Tensor):
+        wm_audio = wm_audio.detach().cpu().numpy()
+        
+    wm_audio = wm_audio.squeeze()
     return wm_audio
 
 
@@ -115,7 +141,7 @@ def musiccaps_mono_filter_author(input_dir, output_dir, author_id):
                 output_file_path = os.path.join(output_dir, f"{id}.wav")
                 if watermark_model:
                     audio, sr = sf.read(file_path)
-                    audio = watermark_audio(audio)
+                    audio = watermark_audio(audio, sr)
                     sf.write(output_file_path, audio, sr)
                 else:
                     # copy to output dir
@@ -259,7 +285,7 @@ def get_mono(input_dir, output_dir="musiccaps_mono"):
 
 if __name__ == "__main__":
     # test_watermark()
-    null_watermark()
+    # null_watermark()
     
     # # retrieve mono audio from the whole audio set
     # get_mono("./dataset/musiccaps", "./dataset/musiccaps_mono_10s")
@@ -269,5 +295,5 @@ if __name__ == "__main__":
     
     
     # # build dataset with watermark for fine tuning audiocraft
-    # init_watermark()
-    # built_dataset_from_musiccaps_mono("./dataset/musiccaps_mono_10s", None, None)
+    init_watermark(name="audioseal")
+    built_dataset_from_musiccaps_mono("./dataset/musiccaps_mono_10s", "./dataset/musiccaps_mono_10s_audioseal", None)
