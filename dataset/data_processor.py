@@ -18,11 +18,11 @@ from collections import defaultdict
 from datasets import load_dataset
 
 import tqdm
-
+import argparse
 
 watermark_model = None
 watermark_name = None
-device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 np.random.seed(42)
 payload = np.random.choice([0, 1], size=16) # [0 1 0 0 0 1 0 0 0 1 0 0 0 0 1 0]
 print("Payload:", payload)
@@ -284,16 +284,31 @@ def get_mono(input_dir, output_dir="musiccaps_mono"):
 
 
 if __name__ == "__main__":
+    def get_parser():
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--action', required=True, choices=["get_mono", "build_mono"])
+        parser.add_argument("--model", choices=["wavmark", "audioseal", "none"])
+        
+        return parser
+    
+    parser = get_parser()
+    args = parser.parse_args()
+
     # test_watermark()
     # null_watermark()
     
-    # # retrieve mono audio from the whole audio set
-    # get_mono("./dataset/musiccaps", "./dataset/musiccaps_mono_10s")
+    if args.action == "get_mono":
+        # retrieve mono audio from the whole audio set
+        get_mono("./dataset/musiccaps", "./dataset/musiccaps_mono_10s")
     
-    # # build dataset without watermark for fine tuning audiocraft
-    # built_dataset_from_musiccaps_mono("./dataset/musiccaps_mono_10s", None, None)
-    
-    
-    # # build dataset with watermark for fine tuning audiocraft
-    init_watermark(name="audioseal")
-    built_dataset_from_musiccaps_mono("./dataset/musiccaps_mono_10s", "./dataset/musiccaps_mono_10s_audioseal", None)
+    elif args.action == "build_mono":
+        assert args.model, "You should add --model arg ('wavmark', 'audioseal' or 'none')"
+        
+        if args.model == "none":
+            # # build dataset without watermark for fine tuning audiocraft
+            built_dataset_from_musiccaps_mono("./dataset/musiccaps_mono_10s", "./dataset/musiccaps_mono_10s_nonwm", None)
+        else:
+            model_name = args.model
+            # # build dataset with watermark for fine tuning audiocraft
+            init_watermark(name=model_name)
+            built_dataset_from_musiccaps_mono("./dataset/musiccaps_mono_10s", f"./dataset/musiccaps_mono_10s_{model_name}", None)
