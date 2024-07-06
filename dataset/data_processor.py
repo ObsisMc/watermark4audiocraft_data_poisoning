@@ -242,6 +242,7 @@ def set_dset(dataset_name, max_sr, train_folder, val_folder, eval_folder, gen_fo
     )
     
     with open(os.path.join(output_dir, f"{dataset_name}.yaml"), "w") as f:
+        f.write("# @package __global__\n\n")
         yaml.dump(data, f, default_flow_style=False)
 
 
