@@ -5,6 +5,7 @@ import torch
 
 import soundfile as sf
 import os
+import argparse
 
 def generate(model_name, params, prompts, batch_size=100, save_path=None):
     musicgen = audiocraft.models.MusicGen.get_pretrained(model_name)
@@ -36,24 +37,48 @@ def generate(model_name, params, prompts, batch_size=100, save_path=None):
     
 
 if __name__ == "__main__":
-    model_names_original_wavmark = [("small", "neg"), ("checkpoints/my_audio_lm_7e9abb74", "pos")]
-    model_names_noneft_audiosealft = [("checkpoints/my_audio_lm_nowatermark_ft_fa62335b", "neg"), ("checkpoints/my_audio_lm_audioseal_ft_e85408a6", "pos")]
+    def get_parser():
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--pos_ckpt', required=True)
+        parser.add_argument("--neg_ckpt", required=True)
+        parser.add_argument("--set", required=True, choices=["train", "test", "all"])
+        
+        return parser
+    
+    parser = get_parser()
+    args = parser.parse_args()
+    
+    dataset2_name = "dataset2"
+    if not os.path.exists(dataset2_name):
+        os.makedirs(dataset2_name)
+    
     
     params = dict(
         use_sampling=True,
         top_k=250,
         duration=10)
     
-    train_n = 1000
-    test_n = 250
+    # dataset
+    train_prompts = [
+        # "This song is played with a harp. It sounds mystic and calming. This song may be playing in a melancholic video game-scene."
+    ] * 1000
+    test_prompts = [
+        # "Electronic sounds accompany the glockenspiel with a style that combines bass notes on beats one and three and chords on beats two and four. The whole atmosphere is playful."
+    ] * 250
+    datasets = dict()
+    if args.set in ["train", "all"]: datasets["train"] = train_prompts
+    if args.set in ["test", "all"]: datasets["test"] = test_prompts
     
+    # ckpts
+    # model_names_original_wavmark = [("small", "neg"), ("checkpoints/my_audio_lm_7e9abb74", "pos")]
+    # model_names_noneft_audiosealft = [("checkpoints/my_audio_lm_nowatermark_ft_fa62335b", "neg"), ("checkpoints/my_audio_lm_audioseal_ft_e85408a6", "pos")]
+    ckpts = [(args.neg_ckpt, "neg"), (args.pos_ckpt, "pos")]
     
-    for m, folder in model_names_noneft_audiosealft:
-        prompts = [
-            # "This song is played with a harp. It sounds mystic and calming. This song may be playing in a melancholic video game-scene.",
-            "Electronic sounds accompany the glockenspiel with a style that combines bass notes on beats one and three and chords on beats two and four. The whole atmosphere is playful."
-        ] * test_n
-        with torch.no_grad():
-            audios, sr = generate(m, params, prompts, batch_size=50, save_path=f"generated_audios_noneft_audiosealft/test_ood_prompts/{folder}")
+    for ckpt, label in ckpts:
+        for split, prompts in datasets.items():
+            with torch.no_grad():
+                audios, sr = generate(ckpt, params, prompts, 
+                                    batch_size=50, 
+                                    save_path=f"{dataset2_name}/{split}/{label}")
     
     
