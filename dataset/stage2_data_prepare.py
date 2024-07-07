@@ -60,10 +60,10 @@ if __name__ == "__main__":
     
     # dataset
     train_prompts = [
-        # "This song is played with a harp. It sounds mystic and calming. This song may be playing in a melancholic video game-scene."
+        "This song is played with a harp. It sounds mystic and calming. This song may be playing in a melancholic video game-scene."
     ] * 1000
     test_prompts = [
-        # "Electronic sounds accompany the glockenspiel with a style that combines bass notes on beats one and three and chords on beats two and four. The whole atmosphere is playful."
+        "Electronic sounds accompany the glockenspiel with a style that combines bass notes on beats one and three and chords on beats two and four. The whole atmosphere is playful."
     ] * 250
     datasets = dict()
     if args.set in ["train", "all"]: datasets["train"] = train_prompts
