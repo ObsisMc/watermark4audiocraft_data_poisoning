@@ -1,4 +1,4 @@
-# Watermark for AudioCraft
+# Watermark for AudioCraft by Dataset Posioning
 
 This work aims to make generative audio AIs like AudioCraft output watmarked audio by posioning their training datasets, which can protect copyrights of musicians who publish their works online.
 
